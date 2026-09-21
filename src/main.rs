@@ -4,11 +4,18 @@ use std::cmp;
 struct ChoiceSequence {
     choices: Vec<bool>,
     cursor: usize,
+    draws: Vec<(usize, usize)>,
+    draw_start_stack: Vec<usize>,
 }
 
 impl ChoiceSequence {
     fn new(choices: Vec<bool>) -> Self {
-        Self { choices, cursor: 0 }
+        Self {
+            choices,
+            cursor: 0,
+            draws: Vec::new(),
+            draw_start_stack: Vec::new(),
+        }
     }
 
     fn next_choice(&mut self) -> Option<bool> {
@@ -19,6 +26,24 @@ impl ChoiceSequence {
 
     fn prepare_replay(&mut self) {
         self.cursor = 0;
+        self.draws.clear();
+        self.draw_start_stack.clear();
+    }
+
+    fn draw<DrawnItem>(
+        &mut self,
+        generate: impl FnOnce(&mut Self) -> Option<DrawnItem>,
+    ) -> Option<DrawnItem> {
+        self.draw_start_stack.push(self.cursor);
+
+        let result = generate(self);
+        let start = self.draw_start_stack.pop().expect("should not be empty");
+
+        if result.is_some() {
+            self.draws.push((start, self.cursor));
+        }
+
+        result
     }
 }
 
@@ -33,14 +58,16 @@ impl Tree {
     }
 
     fn create_node(choices: &mut ChoiceSequence) -> Option<Node> {
-        if choices.next_choice()? {
-            Some(Node::Branch {
-                left: Box::new(Self::create_node(choices)?),
-                right: Box::new(Self::create_node(choices)?),
-            })
-        } else {
-            Some(Node::Leaf)
-        }
+        choices.draw(|choices| {
+            if choices.next_choice()? {
+                Some(Node::Branch {
+                    left: Box::new(Self::create_node(choices)?),
+                    right: Box::new(Self::create_node(choices)?),
+                })
+            } else {
+                Some(Node::Leaf)
+            }
+        })
     }
 
     fn has_height_imbalance(&self) -> bool {
@@ -142,5 +169,43 @@ mod tests {
             assert_eq!(choices.cursor, bits.len());
             assert_eq!(tree.has_height_imbalance(), expected);
         }
+    }
+
+    #[test]
+    fn tree_generator_tracks_draw_regions() {
+        let mut choices = ChoiceSequence::new(vec![true, false, false]);
+        let expected = vec![
+            // left leaf
+            (1, 2),
+            // right leaf
+            (2, 3),
+            // whole tree
+            (0, 3),
+        ];
+
+        Tree::generate(&mut choices);
+        assert_eq!(choices.draws, expected);
+
+        choices.prepare_replay();
+
+        Tree::generate(&mut choices);
+        assert_eq!(choices.draws, expected);
+    }
+
+    #[test]
+    fn tree_generator_does_not_track_invalid_draws() {
+        let mut choices = ChoiceSequence::new(vec![true, false]);
+        let expected = vec![
+            // left leaf is successfully drawn, even though the tree itself fails to generate
+            (1, 2),
+        ];
+
+        assert_eq!(Tree::generate(&mut choices), None);
+        assert_eq!(choices.draws, expected);
+
+        choices.prepare_replay();
+
+        assert_eq!(Tree::generate(&mut choices), None);
+        assert_eq!(choices.draws, expected);
     }
 }
