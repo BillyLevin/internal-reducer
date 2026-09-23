@@ -1,4 +1,4 @@
-use std::cmp;
+use std::{cmp, fmt};
 
 #[derive(Debug)]
 struct ChoiceSequence {
@@ -79,6 +79,85 @@ impl Tree {
     }
 }
 
+impl fmt::Display for Tree {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut nodes = Vec::new();
+        self.root.layout(Vec::new(), &mut nodes);
+
+        let max_depth = nodes.iter().map(|node| node.path.len()).max().unwrap_or(0);
+        let mut steps = vec![3; max_depth];
+        // Keep the compact, equal-length edges of a chain, but spread apart
+        // subtrees whose nodes would otherwise occupy the same column.
+        loop {
+            let collision = nodes.iter().enumerate().find_map(|(i, a)| {
+                nodes[..i].iter().find_map(|b| {
+                    (a.path.len() == b.path.len() && a.x(&steps) == b.x(&steps)).then(|| {
+                        a.path
+                            .iter()
+                            .zip(&b.path)
+                            .position(|(a, b)| a != b)
+                            .unwrap()
+                    })
+                })
+            });
+            match collision {
+                Some(depth) => steps[depth] += 3,
+                None => break,
+            }
+        }
+
+        let min_x = nodes.iter().map(|node| node.x(&steps)).min().unwrap();
+        let max_x = nodes.iter().map(|node| node.x(&steps)).max().unwrap();
+        let mut rows = vec![0];
+        for step in &steps {
+            rows.push(rows.last().unwrap() + step);
+        }
+        let mut canvas = vec![vec![' '; (max_x - min_x + 1) as usize]; rows[max_depth] + 1];
+
+        for node in &nodes {
+            let x = node.x(&steps);
+            let depth = node.path.len();
+            for &child in &node.children {
+                let direction = if nodes[child].x(&steps) < x { -1 } else { 1 };
+                for step in 1..steps[depth] {
+                    canvas[rows[depth] + step][(x - min_x + direction * step as isize) as usize] =
+                        if direction < 0 { '/' } else { '\\' };
+                }
+            }
+            canvas[rows[depth]][(x - min_x) as usize] = '○';
+        }
+
+        for (index, row) in canvas.iter().enumerate() {
+            if index != 0 {
+                writeln!(f)?;
+            }
+            write!(f, "{}", row.iter().collect::<String>().trim_end())?;
+        }
+        Ok(())
+    }
+}
+
+struct PlacedNode {
+    path: Vec<bool>,
+    children: Vec<usize>,
+}
+
+impl PlacedNode {
+    fn x(&self, steps: &[usize]) -> isize {
+        self.path
+            .iter()
+            .zip(steps)
+            .map(|(&right, &step)| {
+                if right {
+                    step as isize
+                } else {
+                    -(step as isize)
+                }
+            })
+            .sum()
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum Node {
     Leaf,
@@ -86,6 +165,24 @@ enum Node {
 }
 
 impl Node {
+    fn layout(&self, path: Vec<bool>, nodes: &mut Vec<PlacedNode>) -> usize {
+        let index = nodes.len();
+        nodes.push(PlacedNode {
+            path: path.clone(),
+            children: Vec::new(),
+        });
+        if let Node::Branch { left, right } = self {
+            let mut left_path = path.clone();
+            left_path.push(false);
+            let mut right_path = path;
+            right_path.push(true);
+            let left = left.layout(left_path, nodes);
+            let right = right.layout(right_path, nodes);
+            nodes[index].children = vec![left, right];
+        }
+        index
+    }
+
     fn has_height_imbalance(&self) -> bool {
         match self {
             Node::Leaf => false,
