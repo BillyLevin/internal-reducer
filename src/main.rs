@@ -16,7 +16,14 @@ fn main() {
         return;
     };
 
-    let choices: Vec<bool> = input.chars().map(|c| c == '1').collect();
+    let choices: Vec<bool> = input
+        .chars()
+        .map(|ch| match ch {
+            '0' => false,
+            '1' => true,
+            _ => panic!("ones and zeroes only please!"),
+        })
+        .collect();
 
     let Some(initial_tree) = Tree::generate(&mut ChoiceSequence::new(choices.clone())) else {
         eprintln!("invalid choice sequence for generating trees");
