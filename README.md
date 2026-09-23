@@ -29,7 +29,7 @@ The prototype I've implemented is a bit simpler than what's described in the pap
 
 This produces locally-minimal reductions relative to the current pass.
 
-Also, since one of the co-authors of the paper works on [Hegel](https://hegel.dev/), I added a little property test with Hegel that checks the reducer preserves interestingness and doesn't producer a shortlex-larger sequence :) 
+Also, since one of the co-authors of the paper works on [Hegel](https://hegel.dev/), I added a little property test with Hegel that checks the reducer preserves interestingness and doesn't produce a shortlex-larger sequence :) 
 
 ## How to run it and examples
 
