@@ -29,6 +29,8 @@ The prototype I've implemented is a bit simpler than what's described in the pap
 
 This produces locally-minimal reductions relative to the current pass.
 
+Also, since one of the co-authors of the paper works on [Hegel](https://hegel.dev/), I added a little property test with Hegel that checks the reducer preserves interestingness and doesn't producer a shortlex-larger sequence :) 
+
 ## How to run it and examples
 
 To test out the reducer, you simply need to give it an initial choice sequence to reduce. The sequence must produce a valid tree that's interesting (height-imbalanced). The program will pretty-print the initial tree and the reduced tree.

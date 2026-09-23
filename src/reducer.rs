@@ -1,6 +1,6 @@
 use std::cmp;
 
-#[derive(Debug)]
+#[derive(Debug, hegel::PrettyPrintable)]
 pub struct ChoiceSequence {
     pub choices: Vec<bool>,
     pub cursor: usize,
@@ -130,9 +130,42 @@ fn shortlex_compare(a: &[bool], b: &[bool]) -> cmp::Ordering {
 
 #[cfg(test)]
 mod tests {
+    use hegel::{TestCase, generators};
+
     use crate::tree::Tree;
 
     use super::*;
+
+    #[hegel::test(test_cases = 1000)]
+    fn reduction_preserves_interestingness(test_case: TestCase) {
+        let initial_choices = test_case.draw(generators::vecs(generators::booleans()));
+
+        let is_interesting = Tree::generate(&mut ChoiceSequence::new(initial_choices.clone()))
+            .is_some_and(|tree| tree.has_height_imbalance());
+
+        let reduced = reduce(
+            initial_choices.clone(),
+            Tree::generate,
+            Tree::has_height_imbalance,
+        );
+
+        if is_interesting {
+            assert!(reduced.is_some_and(|choices| {
+                let is_still_interesting =
+                    Tree::generate(&mut ChoiceSequence::new(choices.clone()))
+                        .is_some_and(|tree| tree.has_height_imbalance());
+
+                let is_not_shortlex_larger = matches!(
+                    shortlex_compare(&choices, &initial_choices),
+                    cmp::Ordering::Less | cmp::Ordering::Equal
+                );
+
+                is_still_interesting && is_not_shortlex_larger
+            }));
+        } else {
+            assert_eq!(reduced, None)
+        }
+    }
 
     #[test]
     fn reduction_works_for_interesting_cases() {
