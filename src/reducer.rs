@@ -170,10 +170,7 @@ mod tests {
 
     use super::*;
 
-    #[hegel::test(test_cases = 1000)]
-    fn reduction_preserves_interestingness(test_case: TestCase) {
-        let initial_choices = test_case.draw(generators::vecs(generators::booleans()));
-
+    fn check_reduction(test_case: &TestCase, initial_choices: Vec<bool>) {
         let initial_tree = Tree::generate(&mut ChoiceSequence::new(initial_choices.clone()));
 
         let (label, is_interesting) = match initial_tree {
@@ -205,6 +202,69 @@ mod tests {
             }));
         } else {
             assert_eq!(reduced, None)
+        }
+    }
+
+    fn draw_subtree(test_case: &TestCase, branch_count: usize) -> Vec<bool> {
+        if branch_count == 0 {
+            return vec![false];
+        }
+
+        // `true` means it's a branched node, so we add that first before generating a
+        // subtree for each child branch
+        let mut choices = vec![true];
+
+        let left_branch_count = test_case.draw(
+            generators::integers()
+                .min_value(0)
+                .max_value(branch_count - 1),
+        );
+
+        let right_branch_count = branch_count - 1 - left_branch_count;
+
+        choices.extend(draw_subtree(test_case, left_branch_count));
+        choices.extend(draw_subtree(test_case, right_branch_count));
+
+        choices
+    }
+
+    #[hegel::test(test_cases = 1000)]
+    fn reduction_preserves_interestingness(test_case: TestCase) {
+        let initial_choices = test_case.draw(generators::vecs(generators::booleans()));
+        check_reduction(&test_case, initial_choices);
+    }
+
+    #[hegel::test(test_cases = 1000)]
+    fn reduction_preserves_interestingness_better_distribution(test_case: TestCase) {
+        let should_be_interesting = test_case.draw(generators::booleans());
+
+        if !should_be_interesting {
+            test_case.event("interesting not guaranteed");
+            check_reduction(
+                &test_case,
+                test_case.draw(generators::vecs(generators::booleans())),
+            );
+            return;
+        } else {
+            // generate a tree that's definitely interesting
+            test_case.event("interesting guaranteed");
+
+            let branch_count: usize =
+                test_case.draw(generators::integers().min_value(2).max_value(50));
+
+            // [true, false] means that the root node is a branch and its left node is a leaf. since
+            // we're putting a subtree with >= 2 branches in the right node, it'll definitely have
+            // an imbalance. this isn't perfect because the imbalance is always at the
+            // root of the tree
+            let mut interesting_choices = vec![true, false];
+            interesting_choices.extend(draw_subtree(&test_case, branch_count));
+
+            assert!(
+                Tree::generate(&mut ChoiceSequence::new(interesting_choices.clone()))
+                    .is_some_and(|tree| tree.has_height_imbalance())
+            );
+
+            check_reduction(&test_case, interesting_choices);
         }
     }
 

@@ -35,13 +35,24 @@ This produces locally-minimal reductions relative to the current pass.
 
 Also, since one of the co-authors of the paper works on [Hegel](https://hegel.dev/), I added a little property test with Hegel that checks the reducer preserves interestingness and doesn't produce a shortlex-larger sequence :) 
 
-It has an awful interestingness distribution at the moment, so is not a good example of a property test. At some point I may write a test-case generator that can deliberately create interesting trees:
+There are two versions of it. The first does not mess with the distribution at all, meaning we don't get many test-cases where the tree is interesting:
 
 ```text
 Statistics (over 1000 test cases):
   * interesting: 3.5% of test cases
   * invalid: 33.8% of test cases
   * uninteresting: 62.7% of test cases
+```
+
+The second generates trees that are guaranteed to be interesting if we generate a `true` boolean. This gives a better distribution, but the implementation of this test-case generator still has issues (see the code comment).
+
+```text
+Statistics (over 1000 test cases):
+  * interesting: 64.3% of test cases
+  * interesting guaranteed: 62.8% of test cases
+  * interesting not guaranteed: 37.2% of test cases
+  * invalid: 9.3% of test cases
+  * uninteresting: 26.4% of test cases
 ```
 
 ## How to run it and examples
