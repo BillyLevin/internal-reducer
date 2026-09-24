@@ -23,7 +23,11 @@ There are many ways that a choice sequence can be edited. The paper shows one si
 
 The prototype I've implemented is a bit simpler than what's described in the paper, and indeed what a "real-world" implementation would look like. Here is a summary of how it works:
 
-- given an "interesting" initial choice sequence, see if any of its regions can be zeroed while retaining interestingness and validity, and making the sequence STRICTLY shortlex-smaller
+- given an "interesting" initial choice sequence, attempt two reduction passes (stopping current iteration at first successful reduction):
+    1. zero its draw regions
+    2. entirely delete some region
+
+  a successful reduction must retain interestingness and validity, and make the sequence STRICTLY shortlex-smaller
 - if an acceptable reduction was found, remove any trailing bits that weren't used during generation and repeat the process for the new sequence with its new regions
 - repeat until no more reductions can be found
 
@@ -176,3 +180,47 @@ reduced tree: 1110000
 ```
 </details>
 
+<hr>
+
+Finally, this is a sequence that doesn't reduce further with just `zero_draw`, but does better when combined with `deletion`:
+
+```sh
+cargo run 11001010100
+```
+
+
+<details>
+<summary>Output</summary>
+
+```text
+initial tree: 11001010100
+         ○
+        / \
+       /   \
+      /     \
+     /       \
+    /         \
+   ○           ○
+  / \         / \
+ /   \       /   \
+○     ○     ○     ○
+                 / \
+                /   \
+               ○     ○
+                    / \
+                   /   \
+                  ○     ○
+
+reduced tree: 1010100
+   ○
+  / \
+ /   \
+○     ○
+     / \
+    /   \
+   ○     ○
+        / \
+       /   \
+      ○     ○
+```
+</details>

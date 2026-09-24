@@ -57,8 +57,14 @@ pub fn reduce<GeneratedItem>(
         Evaluation::Invalid | Evaluation::Uninteresting => return None,
     };
 
-    while let Some(candidate) = zero_draw(&reduced, &generate, &is_interesting) {
-        reduced = candidate;
+    loop {
+        if let Some(candidate) = zero_draw(&reduced, &generate, &is_interesting) {
+            reduced = candidate;
+        } else if let Some(candidate) = deletion(&reduced, &generate, &is_interesting) {
+            reduced = candidate;
+        } else {
+            break;
+        }
     }
 
     Some(reduced.choices)
@@ -111,6 +117,34 @@ fn zero_draw<GeneratedItem>(
             }
             Evaluation::Invalid | Evaluation::Uninteresting | Evaluation::Interesting(_) => {
                 continue;
+            }
+        }
+    }
+
+    None
+}
+
+/// Attempts to delete any arbitrary region via brute force
+fn deletion<GeneratedItem>(
+    choices: &ChoiceSequence,
+    generate: impl Fn(&mut ChoiceSequence) -> Option<GeneratedItem>,
+    is_interesting: impl Fn(&GeneratedItem) -> bool,
+) -> Option<ChoiceSequence> {
+    for start in 0..choices.choices.len() {
+        for end in (start + 1)..=choices.choices.len() {
+            let mut candidate_choices = choices.choices.clone();
+            candidate_choices.drain(start..end);
+
+            match evaluate(candidate_choices, &generate, &is_interesting) {
+                Evaluation::Interesting(candidate)
+                    if shortlex_compare(&candidate.choices, &choices.choices)
+                        == cmp::Ordering::Less =>
+                {
+                    return Some(candidate);
+                }
+                Evaluation::Invalid | Evaluation::Uninteresting | Evaluation::Interesting(_) => {
+                    continue;
+                }
             }
         }
     }
