@@ -174,8 +174,15 @@ mod tests {
     fn reduction_preserves_interestingness(test_case: TestCase) {
         let initial_choices = test_case.draw(generators::vecs(generators::booleans()));
 
-        let is_interesting = Tree::generate(&mut ChoiceSequence::new(initial_choices.clone()))
-            .is_some_and(|tree| tree.has_height_imbalance());
+        let initial_tree = Tree::generate(&mut ChoiceSequence::new(initial_choices.clone()));
+
+        let (label, is_interesting) = match initial_tree {
+            Some(tree) if tree.has_height_imbalance() => ("interesting", true),
+            Some(_) => ("uninteresting", false),
+            None => ("invalid", false),
+        };
+
+        test_case.event(label);
 
         let reduced = reduce(
             initial_choices.clone(),
