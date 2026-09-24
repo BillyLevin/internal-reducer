@@ -1,6 +1,8 @@
 This repository contains a toy "internal reducer" -- as described in [Test-Case Reduction via Test-Case Generation:
 Insights From the Hypothesis Reducer](https://drmaciver.github.io/papers/reduction-via-generation-preview.pdf) by David R. MacIver and Alastair F. Donaldson -- that I've implemented for my own edification purposes.
 
+Most of the important code is in [reducer.rs](./src/reducer.rs).
+
 ## How it works
 
 For a full explanation, comparisons with other approaches, etc., see the paper. Below are my own notes on the salient implementation details as I understand them. I am assuming you understand the basic ideas behind property-based testing and generation/shrinking (it's hard to pin down a concrete definition since implementations differ!). For a primer, I'd recommend [the QuickCheck paper](https://www.cs.tufts.edu/~nr/cs257/archive/john-hughes/quick.pdf).
